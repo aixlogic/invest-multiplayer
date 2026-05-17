@@ -1,0 +1,1130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Invest Multiplayer — by Fintro</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+  <style>
+    :root{
+      --bg:#070910;--surface:#0f1218;--surface2:#161b25;--surface3:#1d2433;
+      --border:#ffffff0e;--border2:#ffffff18;
+      --blue:#3b82f6;--blue-dim:#1d4ed8;--amber:#f59e0b;--green:#22c55e;
+      --red:#ef4444;--text:#f1f5f9;--muted:#64748b;--radius:12px;--radius-lg:20px;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%;overflow:hidden}
+    body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);
+      display:flex;align-items:stretch;justify-content:center;
+      background-image:radial-gradient(ellipse 80% 50% at 50% -20%,#3b82f612,transparent),
+        radial-gradient(ellipse 60% 40% at 80% 100%,#f59e0b08,transparent)}
+
+    /* SCREENS */
+    .screen{display:none;width:100%;max-width:560px;height:100vh;
+      overflow-y:auto;padding:1.75rem 2rem;flex-direction:column;-webkit-overflow-scrolling:touch}
+    .screen.active{display:flex}
+
+    /* DESKTOP SIDE DECORATIONS */
+    @media(min-width:700px){
+      body::before,body::after{content:'';position:fixed;top:0;bottom:0;width:calc((100vw - 560px)/2);
+        pointer-events:none;z-index:0}
+      body::before{left:0;background:linear-gradient(180deg,#f59e0b06 0%,transparent 40%,#3b82f606 100%)}
+      body::after{right:0;background:linear-gradient(180deg,#3b82f606 0%,transparent 40%,#f59e0b06 100%)}
+      .screen{border-left:1px solid var(--border);border-right:1px solid var(--border);position:relative;z-index:1}
+    }
+
+    @media(min-width:900px){
+      .screen{max-width:640px;padding:2rem 2.5rem}
+    }
+
+    /* TOP TICKER LINE */
+    .screen.active::before{content:'';display:block;position:fixed;top:0;left:0;right:0;
+      height:2px;background:linear-gradient(90deg,transparent,var(--amber),var(--blue),transparent);
+      opacity:.5;z-index:10;pointer-events:none}
+
+    /* ROUND DOTS */
+    .round-dots{display:flex;align-items:center;gap:.4rem;margin-bottom:1.25rem}
+    .round-dot{width:8px;height:8px;border-radius:50%;background:var(--surface2);
+      border:1px solid var(--border2);transition:all .3s;flex-shrink:0}
+    .round-dot.done{background:var(--amber);border-color:var(--amber);
+      box-shadow:0 0 6px #f59e0b60}
+    .round-dot.active{background:var(--blue);border-color:var(--blue);
+      box-shadow:0 0 8px #3b82f680;transform:scale(1.3)}
+
+    /* COMMON */
+    .badge{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;
+      font-weight:700;letter-spacing:2px;text-transform:uppercase;
+      padding:.3rem .85rem;border-radius:50px}
+    .badge-amber{background:#f59e0b18;border:1px solid #f59e0b35;color:var(--amber)}
+    .badge-blue{background:#3b82f618;border:1px solid #3b82f635;color:var(--blue)}
+    .badge-green{background:#22c55e18;border:1px solid #22c55e35;color:var(--green)}
+    .badge-red{background:#ef444418;border:1px solid #ef444435;color:var(--red)}
+
+    .btn{display:block;width:100%;padding:.95rem 1.5rem;border:none;
+      border-radius:var(--radius);font-family:'Syne',sans-serif;font-size:.9rem;
+      font-weight:700;cursor:pointer;transition:all .15s;letter-spacing:.5px;
+      text-align:center;text-decoration:none}
+    .btn:active:not(:disabled){transform:scale(.97)}
+    .btn-primary{background:linear-gradient(135deg,var(--blue),var(--blue-dim));
+      color:#fff;box-shadow:0 4px 20px #3b82f630}
+    .btn-primary:hover:not(:disabled){box-shadow:0 4px 24px #3b82f650;transform:translateY(-1px)}
+    .btn-primary:disabled{background:var(--surface2);color:var(--muted);
+      cursor:not-allowed;transform:none;box-shadow:none}
+    .btn-ghost{background:var(--surface2);color:var(--text);border:1px solid var(--border2)}
+    .btn-ghost:hover{border-color:var(--border2);background:var(--surface3)}
+    .btn-amber{background:linear-gradient(135deg,var(--amber),#e08b00);color:#000;
+      box-shadow:0 4px 20px #f59e0b35;font-weight:800}
+    .btn-amber:hover{box-shadow:0 4px 28px #f59e0b55;transform:translateY(-1px)}
+    .btn-sm{width:auto;display:inline-block;padding:.4rem .85rem;font-size:.76rem}
+    .spacer{flex:1}
+    .divider{height:1px;background:linear-gradient(90deg,transparent,var(--border2),transparent);margin:1.1rem 0}
+    .muted{color:var(--muted);font-size:.85rem;line-height:1.65}
+    .fintro-link{display:block;text-align:center;margin-top:.75rem;color:var(--muted);
+      font-size:.75rem;text-decoration:none;transition:color .2s;padding:.5rem}
+    .fintro-link:hover{color:var(--amber)}
+
+    /* SETUP */
+    .player-row{display:flex;align-items:center;gap:.65rem;background:var(--surface);
+      border:1px solid var(--border);border-radius:var(--radius);
+      padding:.7rem .9rem;margin-bottom:.45rem;transition:border-color .2s}
+    .player-row:focus-within{border-color:var(--border2)}
+    .player-num{width:28px;height:28px;border-radius:50%;
+      background:linear-gradient(135deg,var(--surface2),var(--surface3));
+      border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;
+      font-size:.65rem;font-weight:800;color:var(--amber);flex-shrink:0}
+    .player-row input{flex:1;background:none;border:none;outline:none;color:var(--text);
+      font-family:'Syne',sans-serif;font-size:.9rem;font-weight:600}
+    .player-row input::placeholder{color:var(--muted)}
+    .remove-btn{background:none;border:none;color:var(--muted);cursor:pointer;
+      font-size:1.1rem;padding:.1rem .3rem;line-height:1;transition:color .2s;flex-shrink:0}
+    .remove-btn:hover{color:var(--red)}
+
+    /* EVENT CARD */
+    .event-card{background:var(--surface);border:1px solid var(--border2);
+      border-radius:var(--radius-lg);padding:1.75rem 1.75rem 1.75rem 1.5rem;
+      position:relative;overflow:hidden;border-left:3px solid var(--amber)}
+    .event-card::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;
+      background:radial-gradient(ellipse 120% 80% at 110% -20%,#f59e0b10,transparent);
+      pointer-events:none}
+    .event-icon{font-size:2.8rem;margin-bottom:1rem;display:block;line-height:1;
+      filter:drop-shadow(0 0 12px rgba(245,158,11,.4))}
+    .event-label{font-size:.58rem;font-weight:700;letter-spacing:3.5px;text-transform:uppercase;
+      color:var(--amber);margin-bottom:.65rem}
+    .event-headline{font-family:'Playfair Display',serif;font-size:1.15rem;
+      line-height:1.55;color:var(--text)}
+
+    /* ALLOCATION */
+    .portfolio-box{background:linear-gradient(135deg,var(--surface),var(--surface2));
+      border:1px solid var(--border2);border-radius:var(--radius-lg);
+      padding:1.1rem 1.4rem;display:flex;align-items:center;
+      justify-content:space-between;margin-bottom:1rem;position:relative;overflow:hidden}
+    .portfolio-box::after{content:'';position:absolute;top:-30px;right:-30px;
+      width:120px;height:120px;border-radius:50%;
+      background:radial-gradient(circle,#f59e0b12,transparent);pointer-events:none}
+    .portfolio-label{font-size:.6rem;font-weight:700;letter-spacing:1.5px;
+      text-transform:uppercase;color:var(--muted);margin-bottom:.3rem}
+    .portfolio-val{font-family:'Playfair Display',serif;font-size:1.85rem;
+      color:var(--amber);font-weight:700;line-height:1;
+      text-shadow:0 0 20px #f59e0b40}
+
+    .asset-row{background:var(--surface);border:1px solid var(--border);
+      border-radius:var(--radius);padding:.85rem 1rem;margin-bottom:.4rem;
+      transition:all .2s;border-left-width:3px;border-left-style:solid}
+    .asset-row:focus-within{background:var(--surface2)}
+    .asset-top{display:flex;align-items:center;margin-bottom:.65rem}
+    .asset-icon{font-size:1.1rem;margin-right:.55rem;line-height:1}
+    .asset-name{font-weight:700;font-size:.85rem;flex:1;letter-spacing:.3px}
+    .info-btn{background:var(--surface2);border:1px solid var(--border2);border-radius:50%;
+      width:20px;height:20px;display:flex;align-items:center;justify-content:center;
+      font-size:.6rem;color:var(--muted);cursor:pointer;font-weight:800;flex-shrink:0;
+      transition:all .15s;margin-right:.8rem}
+    .info-btn:hover{background:var(--blue);color:#fff;border-color:var(--blue)}
+    .asset-pct{font-family:'Playfair Display',serif;font-size:1.35rem;font-weight:700;
+      min-width:50px;text-align:right}
+
+    input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:5px;
+      background:var(--surface2);border-radius:3px;outline:none;cursor:pointer;
+      border:1px solid var(--border)}
+    input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;
+      border-radius:50%;background:var(--blue);cursor:pointer;
+      border:2px solid var(--bg);box-shadow:0 0 0 2px var(--blue),0 2px 8px #3b82f660;
+      transition:all .15s}
+    input[type=range]:active::-webkit-slider-thumb{background:var(--amber);
+      box-shadow:0 0 0 2px var(--amber),0 2px 12px #f59e0b70}
+
+    .alloc-bar{height:8px;border-radius:4px;overflow:hidden;display:flex;
+      margin:1rem 0 .75rem;background:var(--surface2);border:1px solid var(--border)}
+    .alloc-bar-seg{height:100%;transition:width .25s ease}
+
+    .alloc-footer{background:var(--surface);border:1px solid var(--border2);
+      border-radius:var(--radius);padding:.85rem 1.1rem;
+      display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
+    .alloc-total-lbl{font-size:.6rem;font-weight:700;letter-spacing:1.5px;
+      text-transform:uppercase;color:var(--muted);margin-bottom:.15rem}
+    .alloc-total{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:700;line-height:1}
+    .alloc-total.ok{color:var(--green);text-shadow:0 0 16px #22c55e50}
+    .alloc-total.over{color:var(--red)}
+    .alloc-total.under{color:var(--amber)}
+
+    /* TOOLTIP */
+    .tooltip-overlay{display:none;position:fixed;inset:0;z-index:300;
+      background:rgba(0,0,0,.8);align-items:flex-end;backdrop-filter:blur(4px)}
+    .tooltip-overlay.show{display:flex}
+    .tooltip-card{background:var(--surface);border-top:1px solid var(--border2);
+      border-radius:var(--radius-lg) var(--radius-lg) 0 0;
+      padding:1.75rem;width:100%;max-width:480px;margin:0 auto;
+      animation:slideUp .22s ease}
+    @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+    .tooltip-name{font-weight:800;font-size:1.1rem;margin-bottom:.65rem}
+    .tooltip-text{color:#94a3b8;line-height:1.75;font-size:.88rem;margin-bottom:1.25rem}
+    .tooltip-close{display:block;width:100%;padding:.75rem;background:var(--surface2);
+      border:none;border-radius:var(--radius);color:var(--text);
+      font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;font-size:.88rem;
+      border:1px solid var(--border2)}
+
+    /* REVEAL BARS */
+    .reveal-bars{display:flex;align-items:flex-end;justify-content:center;
+      gap:.5rem;height:220px;margin:1.5rem 0;
+      background:linear-gradient(180deg,transparent,var(--surface));
+      border-bottom:1px solid var(--border2);padding:0 .25rem}
+    .bar-col{display:flex;flex-direction:column;align-items:center;gap:.4rem;flex:1;min-width:0}
+    .bar{width:100%;border-radius:8px 8px 0 0;background:var(--blue);min-height:4px;
+      transition:height 1.1s cubic-bezier(.34,1.56,.64,1);
+      display:flex;align-items:flex-start;justify-content:center;overflow:hidden;
+      position:relative}
+    .bar.gold{background:linear-gradient(180deg,#fbbf24,var(--amber));
+      box-shadow:0 0 20px #f59e0b50,0 0 40px #f59e0b20}
+    .bar.silver{background:linear-gradient(180deg,#cbd5e1,#94a3b8)}
+    .bar.bronze{background:linear-gradient(180deg,#e8a87c,#cd7f32)}
+    .bar:not(.gold):not(.silver):not(.bronze){
+      background:linear-gradient(180deg,#60a5fa,var(--blue))}
+    .bar-val{font-size:.6rem;font-weight:800;color:rgba(255,255,255,.95);
+      padding:.35rem .1rem;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;
+      max-width:100%;text-align:center;text-shadow:0 1px 3px rgba(0,0,0,.5)}
+    .bar-name{font-size:.65rem;font-weight:700;color:var(--muted);text-align:center;
+      overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+
+    /* PERF TABLE */
+    .perf-grid{display:flex;flex-direction:column;gap:.35rem;margin:.75rem 0}
+    .perf-row{display:flex;align-items:center;gap:.7rem;background:var(--surface);
+      border:1px solid var(--border);border-radius:var(--radius);padding:.6rem .9rem;
+      transition:border-color .2s}
+    .perf-row:hover{border-color:var(--border2)}
+    .perf-icon{font-size:1.05rem;flex-shrink:0}
+    .perf-name{flex:1;font-size:.82rem;font-weight:700}
+    .perf-bar{flex:2;height:4px;background:var(--surface2);border-radius:2px;overflow:hidden}
+    .perf-bar-fill{height:100%;border-radius:2px;transition:width .6s ease}
+    .perf-pct{font-family:'Playfair Display',serif;font-size:.95rem;font-weight:700;
+      min-width:52px;text-align:right}
+    .perf-pct.pos{color:var(--green)}
+    .perf-pct.neg{color:var(--red)}
+
+    /* EXPLAIN */
+    .explain-card{background:var(--surface);border:1px solid var(--border);
+      border-radius:var(--radius);padding:.95rem 1.1rem;margin-bottom:.4rem;
+      border-left-width:3px;border-left-style:solid;transition:border-color .2s}
+    .explain-top{display:flex;align-items:center;gap:.65rem;margin-bottom:.5rem}
+    .explain-name{font-weight:700;font-size:.88rem;flex:1}
+    .explain-pct{font-family:'Playfair Display',serif;font-size:1.15rem;font-weight:700;
+      padding:.15rem .5rem;border-radius:8px}
+    .explain-pct.pos{color:var(--green);background:#22c55e12}
+    .explain-pct.neg{color:var(--red);background:#ef444412}
+    .explain-text{font-size:.8rem;color:#94a3b8;line-height:1.72}
+
+    /* FINAL */
+    .final-row{display:flex;align-items:center;gap:.9rem;background:var(--surface);
+      border:1px solid var(--border);border-radius:var(--radius-lg);
+      padding:1rem 1.25rem;margin-bottom:.45rem;transition:all .2s}
+    .final-row.champion{border-color:#f59e0b50;background:linear-gradient(135deg,#f59e0b0a,transparent);
+      box-shadow:0 0 30px #f59e0b18}
+    .final-medal{font-size:1.6rem;min-width:36px;text-align:center;line-height:1}
+    .final-name{flex:1;font-weight:700;font-size:.95rem}
+    .final-gain{font-size:.72rem;margin-top:.15rem}
+    .final-gain.pos{color:var(--green)}
+    .final-gain.neg{color:var(--red)}
+    .final-val{font-family:'Playfair Display',serif;font-size:1.1rem;
+      color:var(--amber);font-weight:700}
+
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+    @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+
+    /* TICKER */
+    .ticker-wrap{overflow:hidden;background:var(--surface);border:1px solid var(--border2);
+      border-radius:var(--radius);padding:.38rem .75rem;margin-bottom:.75rem}
+    .ticker-inner{display:inline-block;white-space:nowrap;
+      animation:ticker 22s linear infinite}
+    @keyframes ticker{0%{transform:translateX(40%)}100%{transform:translateX(-100%)}}
+    .ticker-text{font-size:.65rem;font-weight:700;color:var(--amber);letter-spacing:.5px}
+    .ticker-sep{color:var(--muted);padding:0 1.5rem}
+
+    /* REACTIONS */
+    .bar-reaction{font-size:.58rem;font-weight:800;text-align:center;margin-top:.1rem;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+
+    /* MUTE BTN */
+    #mute-btn{position:fixed;top:.9rem;right:.9rem;z-index:500;
+      background:var(--surface);border:1px solid var(--border2);
+      border-radius:50%;width:34px;height:34px;display:flex;align-items:center;
+      justify-content:center;cursor:pointer;font-size:.9rem;transition:all .2s}
+    #mute-btn:hover{border-color:var(--amber)}
+
+    /* CHART */
+    .chart-wrap{background:var(--surface);border:1px solid var(--border2);
+      border-radius:var(--radius);padding:1rem 1rem .5rem;margin-bottom:1rem}
+    .chart-lbl{font-size:.58rem;font-weight:700;letter-spacing:2.5px;
+      text-transform:uppercase;color:var(--muted);margin-bottom:.75rem}
+
+    /* ALLOC HISTORY */
+    .alloc-hist{background:var(--surface);border:1px solid var(--border2);
+      border-radius:var(--radius);padding:.85rem 1rem;margin-bottom:.85rem;overflow-x:auto}
+    .alloc-hist-lbl{font-size:.58rem;font-weight:700;letter-spacing:2.5px;
+      text-transform:uppercase;color:var(--muted);margin-bottom:.6rem}
+    .ah-table{width:100%;border-collapse:collapse;font-size:.72rem;white-space:nowrap}
+    .ah-table th{color:var(--muted);font-weight:700;padding:.2rem .5rem;
+      text-align:right;font-size:.68rem}
+    .ah-table th:first-child{text-align:left}
+    .ah-table td{padding:.3rem .5rem;text-align:right;border-top:1px solid var(--border)}
+    .ah-table td:first-child{text-align:left;font-weight:700}
+    .ah-hi{color:var(--amber)!important}
+    .ah-lo{color:var(--muted)!important}
+
+    /* BENCHMARK ROW */
+    .final-row.benchmark{border-style:dashed;opacity:.75}
+
+    @media(min-width:480px){
+      .tooltip-overlay{align-items:center}
+      .tooltip-card{border-radius:var(--radius-lg);animation:none}
+    }
+  </style>
+</head>
+<body>
+
+<!-- MUTE BUTTON -->
+<div id="mute-btn" onclick="toggleMute()" title="Toggle sound">🔊</div>
+
+<!-- TOOLTIP -->
+<div class="tooltip-overlay" id="tooltip-overlay">
+  <div class="tooltip-card">
+    <div class="tooltip-name" id="tip-name"></div>
+    <div class="tooltip-text" id="tip-text"></div>
+    <button class="tooltip-close" onclick="closeTooltip()">Got it ✓</button>
+  </div>
+</div>
+
+<!-- INTRO -->
+<div class="screen active" id="screen-intro">
+  <div style="font-family:'Syne',sans-serif;font-size:.68rem;font-weight:800;letter-spacing:3.5px;text-transform:uppercase;color:var(--muted);padding-top:.25rem">
+    fin<span style="color:var(--amber)">tro</span> <span style="color:var(--border2)">·</span> classroom series
+  </div>
+  <div class="spacer"></div>
+  <div>
+    <span class="badge badge-amber" style="margin-bottom:1.5rem">Multiplayer · 2–8 Players</span>
+    <h1 style="font-family:'Playfair Display',serif;font-size:clamp(2.8rem,10vw,3.8rem);line-height:1.05;margin-bottom:1.25rem;letter-spacing:-1px">
+      Invest<br><em style="color:var(--amber);text-shadow:0 0 40px #f59e0b40">Multiplayer</em>
+    </h1>
+    <p style="color:#94a3b8;font-size:.93rem;line-height:1.8;margin-bottom:2rem;max-width:340px">
+      6 rounds. 5 asset classes. $1,000 to invest.<br>
+      Survive real market events — inflation, crashes,<br>
+      bull runs, and crises. Who invests best?
+    </p>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.55rem;margin-bottom:2.5rem">
+      <div style="background:var(--surface);border:1px solid var(--border2);border-top:2px solid var(--amber);border-radius:var(--radius);padding:.95rem;text-align:center">
+        <div style="font-family:'Playfair Display',serif;font-size:1.7rem;color:var(--text);font-weight:700;line-height:1">6</div>
+        <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-top:.3rem">Rounds</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border2);border-top:2px solid var(--blue);border-radius:var(--radius);padding:.95rem;text-align:center">
+        <div style="font-family:'Playfair Display',serif;font-size:1.7rem;color:var(--text);font-weight:700;line-height:1">5</div>
+        <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-top:.3rem">Assets</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border2);border-top:2px solid var(--green);border-radius:var(--radius);padding:.95rem;text-align:center">
+        <div style="font-family:'Playfair Display',serif;font-size:1.7rem;color:var(--text);font-weight:700;line-height:1">$1K</div>
+        <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-top:.3rem">Start</div>
+      </div>
+    </div>
+  </div>
+  <button class="btn btn-primary" onclick="goSetup()" style="font-size:.95rem;letter-spacing:1px">Start Game →</button>
+  <a class="fintro-link" href="https://fintrooo.netlify.app">← Back to Fintro</a>
+  <div style="height:.5rem"></div>
+</div>
+
+<!-- SETUP -->
+<div class="screen" id="screen-setup">
+  <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1.5rem">
+    <button onclick="goIntro()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.2rem;padding:0;line-height:1">←</button>
+    <h1 style="font-family:'Playfair Display',serif;font-size:1.5rem">Set up players</h1>
+  </div>
+  <p class="muted" style="margin-bottom:1.25rem">Add 2–8 players. Each player will allocate their portfolio secretly when their turn comes.</p>
+  <div id="player-list"></div>
+  <button class="btn btn-ghost" id="add-btn" onclick="addPlayer()" style="margin-top:.35rem;margin-bottom:1.5rem">+ Add Player</button>
+  <button class="btn btn-primary" id="start-btn" onclick="startGame()" disabled style="margin-top:auto">Start Game →</button>
+  <div style="height:1.5rem"></div>
+</div>
+
+<!-- BRIEFING -->
+<div class="screen" id="screen-briefing">
+  <div id="briefing-body"></div>
+</div>
+
+<!-- HANDOFF -->
+<div class="screen" id="screen-handoff">
+  <div id="handoff-body" style="flex:1;display:flex;flex-direction:column;justify-content:center;text-align:center"></div>
+</div>
+
+<!-- ALLOCATE -->
+<div class="screen" id="screen-allocate">
+  <div id="allocate-body"></div>
+</div>
+
+<!-- REVEAL -->
+<div class="screen" id="screen-reveal">
+  <div id="reveal-body"></div>
+</div>
+
+<!-- EXPLAIN -->
+<div class="screen" id="screen-explain">
+  <div id="explain-body"></div>
+</div>
+
+<!-- FINAL -->
+<div class="screen" id="screen-final">
+  <div id="final-body"></div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════
+// DATA
+// ══════════════════════════════════════════════════════
+
+const ASSETS = [
+  {id:'stocks',     label:'Stocks',      icon:'📈', color:'#3b82f6',
+   tip:'Ownership shares in companies. High potential returns, high volatility. The engine of long-term wealth building — but can crash 30%+ in a downturn.'},
+  {id:'bonds',      label:'Gov Bonds',   icon:'🏛️',  color:'#8b5cf6',
+   tip:'Loans to governments that pay you back with interest. Lower risk, lower return — but lose value when interest rates rise. A crisis hedge.'},
+  {id:'realestate', label:'Real Estate', icon:'🏠', color:'#f59e0b',
+   tip:'Physical property. Rents provide steady income and values often rise with inflation. Hard to sell quickly — but a real, tangible asset.'},
+  {id:'gold',       label:'Gold',        icon:'✦',  color:'#eab308',
+   tip:"The original safe haven. No yield, no dividends — but 5,000 years of store-of-value track record. Shines brightest when everything else panics."},
+  {id:'cash',       label:'Cash',        icon:'💵', color:'#22c55e',
+   tip:'Money in a savings account. Safe nominal value — but inflation silently destroys its real purchasing power every year. Safe, but not free.'},
+];
+
+const ROUNDS = [
+  {
+    num:1, icon:'🔥', event:'INFLATION SPIKE',
+    headline:'Consumer prices surge 8.5% — highest in 40 years. Central banks signal aggressive rate hikes.',
+    returns:{stocks:-8, bonds:-18, realestate:6, gold:15, cash:-5},
+    explains:{
+      stocks:    {pct:'-8%',  text:'Rate hike fears crushed markets. Higher rates slow growth and squeeze corporate profits — stocks sold off before the hikes even began.'},
+      bonds:     {pct:'-18%', text:'Bond prices move inversely to interest rates. When rates rise sharply, bonds lose value hard. The worst asset this round.'},
+      realestate:{pct:'+6%',  text:'Real assets hedge inflation. As prices rise broadly, so do rents and property values — giving real estate natural protection.'},
+      gold:      {pct:'+15%', text:"Gold's oldest job: store of value when paper money loses purchasing power. Investors bought it immediately."},
+      cash:      {pct:'-5%',  text:'8% inflation destroyed cash\'s real value by 5%. Safe on paper — but holding cash during inflation is a guaranteed slow loss.'},
+    }
+  },
+  {
+    num:2, icon:'📉', event:'MARKET CRASH',
+    headline:'Tech bubble bursts. Major indices drop 25% in days. Margin calls trigger mass selling. Fear spreads globally.',
+    returns:{stocks:-30, bonds:15, realestate:-10, gold:10, cash:2},
+    explains:{
+      stocks:    {pct:'-30%', text:'Panic is contagious. Once fear takes hold, rational valuation becomes irrelevant — the crowd sells and prices collapse faster than fundamentals.'},
+      bonds:     {pct:'+15%', text:"Flight to safety. In every crash, investors flee to government bonds. Demand surged, prices rose. This is the textbook crisis response."},
+      realestate:{pct:'-10%', text:'Credit tightened, confidence fell, transactions froze. Property markets are slower than stocks — but not immune.'},
+      gold:      {pct:'+10%', text:'Safe haven demand surged. When financial systems wobble, gold holds its value. Centuries of trust, no counterparty risk.'},
+      cash:      {pct:'+2%',  text:'Cash is king in a crisis. Boring — but while everything else fell, it preserved value and earned a small return.'},
+    }
+  },
+  {
+    num:3, icon:'🏚️', event:'DEEP RECESSION',
+    headline:'GDP contracts for a second consecutive quarter. Unemployment reaches 9%. Consumer spending collapses.',
+    returns:{stocks:-12, bonds:8, realestate:-8, gold:5, cash:2},
+    explains:{
+      stocks:    {pct:'-12%', text:'Companies earn less when people spend less. Rising unemployment dampens consumption. Prices reflect a darker future.'},
+      bonds:     {pct:'+8%',  text:'Central banks cut rates to stimulate the economy. Lower rates push bond prices up — the textbook recession playbook.'},
+      realestate:{pct:'-8%',  text:'Job losses meant people couldn\'t pay rent. Vacancies rose, prices fell. Property is not recession-proof.'},
+      gold:      {pct:'+5%',  text:'Uncertainty maintained demand. Not a crisis spike — recessions are slow-burn — but gold held value while others fell.'},
+      cash:      {pct:'+2%',  text:'Low but positive. Stability and optionality. Ready to deploy when the recovery eventually arrives.'},
+    }
+  },
+  {
+    num:4, icon:'🌱', event:'RECOVERY BEGINS',
+    headline:'Central bank slashes rates to near zero. Stimulus packages announced. Markets begin pricing in a brighter future.',
+    returns:{stocks:28, bonds:-2, realestate:10, gold:-8, cash:1},
+    explains:{
+      stocks:    {pct:'+28%', text:"Markets price the future, not the present. Cheap money and optimism sent stocks surging before the economy actually recovered."},
+      bonds:     {pct:'-2%',  text:'As recovery expectations grew, rates rose slightly. Bond prices dipped — time to rotate into growth assets.'},
+      realestate:{pct:'+10%', text:'Near-zero mortgage rates made borrowing irresistible. Demand surged. Property recovered faster than the broader economy.'},
+      gold:      {pct:'-8%',  text:'When fear fades, gold loses its appeal. Investors rotated out of safe havens into higher-return assets.'},
+      cash:      {pct:'+1%',  text:'Near-zero interest rates. Earned almost nothing. Fine for safety — but a costly missed opportunity.'},
+    }
+  },
+  {
+    num:5, icon:'🚀', event:'BULL RUN',
+    headline:"AI boom drives record market highs. Tech valuations soar. 'This time it's different' becomes the mainstream view.",
+    returns:{stocks:40, bonds:-8, realestate:15, gold:-12, cash:1},
+    explains:{
+      stocks:    {pct:'+40%', text:'Euphoria. A genuine technological revolution combined with cheap money and FOMO created one of the greatest bull markets in history.'},
+      bonds:     {pct:'-8%',  text:'In a bull market, nobody wants boring bonds. Capital flooded into stocks, yields rose, bond prices fell.'},
+      realestate:{pct:'+15%', text:'Wealth effects, remote-work demand, and cheap mortgages drove property to record highs. Everyone wanted hard assets.'},
+      gold:      {pct:'-12%', text:'Why hold gold when stocks are up 40%? In euphoric bull runs, gold is the boring relative nobody invites to the party.'},
+      cash:      {pct:'+1%',  text:'The worst place to be. Cash earned almost nothing while everything surged. Opportunity cost was enormous.'},
+    }
+  },
+  {
+    num:6, icon:'⚡', event:'GEOPOLITICAL SHOCK',
+    headline:'Major conflict erupts. Energy prices spike 60%. Supply chains fracture. Global markets in freefall.',
+    returns:{stocks:-22, bonds:5, realestate:-5, gold:25, cash:3},
+    explains:{
+      stocks:    {pct:'-22%', text:'War is bad for business. Supply chains broke, energy spiked, investment froze. Markets hate geopolitical uncertainty above all.'},
+      bonds:     {pct:'+5%',  text:"Flight to safety, one more time. When the world shakes, investors run to government bonds. The pattern always repeats."},
+      realestate:{pct:'-5%',  text:'Sentiment worsened, transactions slowed — but physical assets held relatively well. A dip, not a crash.'},
+      gold:      {pct:'+25%', text:"Geopolitical crises are gold's defining moment. No counterparty risk, no government dependency, 5,000 years of crisis-proof track record."},
+      cash:      {pct:'+3%',  text:'Higher rates meant cash finally earned something real. And it preserved full optionality in a chaotic environment.'},
+    }
+  }
+];
+
+// ══════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════
+
+let G = {
+  players: [],   // [{name, portfolio, history:[]}]
+  round: 0,
+  turn: 0,
+  allocs: [],    // allocs[round][playerIdx] = {stocks,bonds,...}
+};
+
+let currentAllocs = {};
+
+// ══════════════════════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════════════════════
+
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById('screen-' + id);
+  el.classList.add('active');
+  el.scrollTop = 0;
+}
+
+// ══════════════════════════════════════════════════════
+// INTRO / SETUP
+// ══════════════════════════════════════════════════════
+
+function goIntro() { show('intro'); }
+
+function goSetup() {
+  document.getElementById('player-list').innerHTML = '';
+  G.players = [];
+  addPlayer('Alex');
+  addPlayer('Jordan');
+  checkStart();
+  show('setup');
+}
+
+let pCounter = 0;
+
+function addPlayer(name) {
+  pCounter++;
+  const n = pCounter;
+  const list = document.getElementById('player-list');
+  const div = document.createElement('div');
+  div.className = 'player-row';
+  div.id = 'pr-' + n;
+  div.innerHTML =
+    '<div class="player-num">' + n + '</div>' +
+    '<input type="text" placeholder="Player ' + n + '" value="' + (name || '') + '" ' +
+    'oninput="checkStart()" maxlength="18">' +
+    (n > 2 ? '<button class="remove-btn" onclick="removePlayer(' + n + ')">×</button>' : '');
+  list.appendChild(div);
+  checkStart();
+  // Focus new input if manually added
+  if (!name) setTimeout(() => div.querySelector('input').focus(), 50);
+}
+
+function removePlayer(n) {
+  document.getElementById('pr-' + n).remove();
+  // Re-number
+  let i = 1;
+  document.querySelectorAll('.player-row').forEach(row => {
+    row.querySelector('.player-num').textContent = i;
+    i++;
+  });
+  checkStart();
+}
+
+function checkStart() {
+  const rows = document.querySelectorAll('.player-row');
+  const valid = rows.length >= 2;
+  document.getElementById('start-btn').disabled = !valid;
+  const addBtn = document.getElementById('add-btn');
+  if (addBtn) addBtn.style.display = rows.length >= 8 ? 'none' : '';
+}
+
+function startGame() {
+  const inputs = document.querySelectorAll('.player-row input');
+  G.players = Array.from(inputs).map((inp, i) => ({
+    name: inp.value.trim() || 'Player ' + (i + 1),
+    portfolio: 1000,
+    history: [1000],
+  }));
+  G.round = 0;
+  G.allocs = [];
+  briefRound();
+}
+
+// ══════════════════════════════════════════════════════
+// ROUND BRIEFING
+// ══════════════════════════════════════════════════════
+
+function briefRound() {
+  const r = ROUNDS[G.round];
+  G.allocs[G.round] = {};
+
+  const dots = Array.from({length:6},(_,i)=>
+    '<div class="round-dot ' + (i < G.round ? 'done' : i === G.round ? 'active' : '') + '"></div>'
+  ).join('');
+
+  const playerRows = G.players.map(p =>
+    '<div style="display:flex;justify-content:space-between;align-items:center;padding:.4rem 0;' +
+    'border-bottom:1px solid var(--border)">' +
+    '<span style="font-weight:600;font-size:.84rem">' + esc(p.name) + '</span>' +
+    '<span style="font-family:\'Playfair Display\',serif;color:var(--amber);font-size:.95rem">' + fmt(p.portfolio) + '</span>' +
+    '</div>'
+  ).join('');
+
+  document.getElementById('briefing-body').innerHTML =
+    '<div class="round-dots">' + dots + '</div>' +
+    '<span class="badge badge-amber" style="margin-bottom:1.1rem">Round ' + r.num + ' of 6</span>' +
+    '<div class="event-card" style="margin-bottom:1.1rem">' +
+      '<span class="event-icon">' + r.icon + '</span>' +
+      '<div class="event-label">' + r.event + '</div>' +
+      '<div class="event-headline">"' + r.headline + '"</div>' +
+    '</div>' +
+    '<div style="background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:1.1rem">' +
+      '<div style="font-size:.58rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Current Portfolios</div>' +
+      playerRows +
+    '</div>' +
+    '<p class="muted" style="margin-bottom:1.25rem">Each player allocates secretly — don\'t show others your screen!</p>' +
+    '<button class="btn btn-primary" onclick="doPlayerTurn(0)">Hand to ' + esc(G.players[0].name) + ' →</button>';
+
+  show('briefing');
+}
+
+// ══════════════════════════════════════════════════════
+// ALLOCATION
+// ══════════════════════════════════════════════════════
+
+function doPlayerTurn(idx) {
+  G.turn = idx;
+  currentAllocs = {};
+  ASSETS.forEach(a => { currentAllocs[a.id] = 20; });
+  renderAlloc();
+  show('allocate');
+  playClick();
+}
+
+function renderAlloc() {
+  const p = G.players[G.turn];
+  const idx = G.turn;
+  const r = ROUNDS[G.round];
+
+  const rows = ASSETS.map(a =>
+    '<div class="asset-row" style="border-left-color:' + a.color + '">' +
+      '<div class="asset-top">' +
+        '<span class="asset-icon">' + a.icon + '</span>' +
+        '<span class="asset-name">' + a.label + '</span>' +
+        '<button class="info-btn" onclick="showTip(\'' + a.id + '\')" type="button">i</button>' +
+        '<span class="asset-pct" id="pct-' + a.id + '" style="color:' + a.color + '">20%</span>' +
+      '</div>' +
+      '<input type="range" min="0" max="100" value="20" id="sl-' + a.id + '" ' +
+      'style="accent-color:' + a.color + '" ' +
+      'oninput="onSlider(\'' + a.id + '\',this.value)">' +
+    '</div>'
+  ).join('');
+
+  const preview = ASSETS.map(a =>
+    '<div class="alloc-bar-seg" id="prev-' + a.id + '" style="width:20%;background:' + a.color + '"></div>'
+  ).join('');
+
+  document.getElementById('allocate-body').innerHTML =
+    '<div style="display:flex;align-items:center;margin-bottom:.5rem">' +
+      '<span style="background:var(--amber);color:#000;font-size:.6rem;font-weight:800;' +
+      'letter-spacing:2px;text-transform:uppercase;padding:.28rem .7rem;border-radius:50px">Confidential</span>' +
+      '<div style="flex:1"></div>' +
+      '<span style="font-size:.75rem;color:var(--muted)">Round ' + (G.round + 1) + '/6</span>' +
+    '</div>' +
+    '<div class="ticker-wrap"><div class="ticker-inner">' +
+      '<span class="ticker-text">' + r.icon + ' ' + r.event + '</span>' +
+      '<span class="ticker-sep">·</span>' +
+      '<span class="ticker-text">' + r.headline + '</span>' +
+      '<span class="ticker-sep">·</span>' +
+      '<span class="ticker-text">' + r.icon + ' ' + r.event + '</span>' +
+      '<span class="ticker-sep">·</span>' +
+      '<span class="ticker-text">' + r.headline + '</span>' +
+    '</div></div>' +
+    '<div class="portfolio-box" style="margin-bottom:1rem">' +
+      '<div>' +
+        '<div class="portfolio-label">' + esc(p.name) + '\'s Portfolio</div>' +
+        '<div class="portfolio-val">' + fmt(p.portfolio) + '</div>' +
+      '</div>' +
+      '<div style="font-size:1.8rem">' + (idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '🎯') + '</div>' +
+    '</div>' +
+    rows +
+    '<div class="alloc-bar" id="alloc-preview">' + preview + '</div>' +
+    '<div class="alloc-footer">' +
+      '<div>' +
+        '<div class="alloc-total-lbl">Allocated</div>' +
+        '<div class="alloc-total ok" id="alloc-total">100%</div>' +
+      '</div>' +
+      '<button class="btn btn-ghost btn-sm" onclick="evenSplit()" type="button">Even Split</button>' +
+    '</div>' +
+    '<button class="btn btn-primary" id="confirm-btn" onclick="confirmAlloc()">Confirm Allocation →</button>' +
+    '<div style="height:1.5rem"></div>';
+}
+
+function onSlider(id, val) {
+  currentAllocs[id] = parseInt(val, 10);
+  document.getElementById('pct-' + id).textContent = val + '%';
+  refreshAllocUI();
+}
+
+function evenSplit() {
+  ASSETS.forEach(a => {
+    currentAllocs[a.id] = 20;
+    const sl = document.getElementById('sl-' + a.id);
+    const pct = document.getElementById('pct-' + a.id);
+    if (sl) sl.value = 20;
+    if (pct) pct.textContent = '20%';
+  });
+  refreshAllocUI();
+}
+
+function refreshAllocUI() {
+  const total = ASSETS.reduce((s, a) => s + (currentAllocs[a.id] || 0), 0);
+  const el = document.getElementById('alloc-total');
+  const btn = document.getElementById('confirm-btn');
+  if (!el) return;
+  el.textContent = total + '%';
+  el.className = 'alloc-total ' + (total === 100 ? 'ok' : total > 100 ? 'over' : 'under');
+  if (btn) btn.disabled = total !== 100;
+  // Update preview bar
+  ASSETS.forEach(a => {
+    const seg = document.getElementById('prev-' + a.id);
+    if (seg) seg.style.width = (currentAllocs[a.id] || 0) + '%';
+  });
+}
+
+function confirmAlloc() {
+  const total = ASSETS.reduce((s, a) => s + (currentAllocs[a.id] || 0), 0);
+  if (total !== 100) return;
+  playClick();
+  G.allocs[G.round][G.turn] = {...currentAllocs};
+  currentAllocs = {};
+
+  const next = G.turn + 1;
+  if (next < G.players.length) {
+    renderHandoff(next);
+    show('handoff');
+  } else {
+    applyRound();
+  }
+}
+
+function renderHandoff(nextIdx) {
+  document.getElementById('handoff-body').innerHTML =
+    '<div style="font-size:3rem;margin-bottom:1.25rem">🤝</div>' +
+    '<h1 style="font-family:\'Playfair Display\',serif;font-size:1.5rem;margin-bottom:.75rem">Done!</h1>' +
+    '<p class="muted" style="margin-bottom:2rem">' +
+      'Pass the device to<br>' +
+      '<strong style="color:var(--text);font-size:1.1rem">' + esc(G.players[nextIdx].name) + '</strong>' +
+    '</p>' +
+    '<button class="btn btn-primary" style="max-width:280px;margin:0 auto" ' +
+    'onclick="doPlayerTurn(' + nextIdx + ')">I\'m ' + esc(G.players[nextIdx].name) + ' →</button>';
+}
+
+// ══════════════════════════════════════════════════════
+// APPLY ROUND
+// ══════════════════════════════════════════════════════
+
+function applyRound() {
+  const r = ROUNDS[G.round];
+  G.players.forEach((p, idx) => {
+    const alloc = G.allocs[G.round][idx];
+    let newVal = 0;
+    ASSETS.forEach(a => {
+      const frac = (alloc[a.id] || 0) / 100;
+      const ret  = r.returns[a.id] / 100;
+      newVal += p.portfolio * frac * (1 + ret);
+    });
+    p.portfolio = Math.max(0, Math.round(newVal));
+    p.history.push(p.portfolio);
+  });
+  renderReveal();
+  show('reveal');
+}
+
+// ══════════════════════════════════════════════════════
+// REVEAL
+// ══════════════════════════════════════════════════════
+
+function renderReveal() {
+  const r = ROUNDS[G.round];
+  const ranked = [...G.players].map((p, i) => ({...p, origIdx: i}))
+                              .sort((a, b) => b.portfolio - a.portfolio);
+
+  const maxP = Math.max(...G.players.map(p => p.portfolio));
+  const floorP = Math.max(0, Math.min(...G.players.map(p => p.portfolio)) * 0.75);
+  const range = maxP - floorP || 1;
+  const BAR_MAX = 185;
+
+  const barCols = ranked.map((p, i) => {
+    const h = Math.round(((p.portfolio - floorP) / range) * BAR_MAX) + 20;
+    const cls = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
+    const roundGain = p.portfolio - p.history[p.history.length - 2];
+    const roundPct = ((roundGain / p.history[p.history.length - 2]) * 100).toFixed(1);
+    const reactionColor = roundGain >= 0 ? 'var(--green)' : 'var(--red)';
+    const reactionText = (roundGain >= 0 ? '▲ +' : '▼ ') + roundPct + '%';
+    return '<div class="bar-col">' +
+      '<div class="bar ' + cls + '" id="bbar-' + i + '" style="height:0" data-h="' + h + '">' +
+        '<span class="bar-val">' + fmt(p.portfolio) + '</span>' +
+      '</div>' +
+      '<div class="bar-name">' + esc(p.name) + '</div>' +
+      '<div class="bar-reaction" style="color:' + reactionColor + '">' + reactionText + '</div>' +
+    '</div>';
+  }).join('');
+
+  const maxAbsRet = Math.max(...ASSETS.map(a => Math.abs(r.returns[a.id])));
+  const perfRows = ASSETS.map(a => {
+    const ret = r.returns[a.id];
+    const barW = Math.round((Math.abs(ret) / maxAbsRet) * 100);
+    const barColor = ret >= 0 ? 'var(--green)' : 'var(--red)';
+    return '<div class="perf-row" style="border-left:3px solid ' + a.color + '">' +
+      '<span class="perf-icon">' + a.icon + '</span>' +
+      '<span class="perf-name">' + a.label + '</span>' +
+      '<div class="perf-bar"><div class="perf-bar-fill" style="width:' + barW + '%;background:' + barColor + '"></div></div>' +
+      '<span class="perf-pct ' + (ret >= 0 ? 'pos' : 'neg') + '">' +
+        (ret >= 0 ? '+' : '') + ret + '%</span>' +
+    '</div>';
+  }).join('');
+
+  const dots = Array.from({length:6},(_,i)=>
+    '<div class="round-dot ' + (i < G.round ? 'done' : i === G.round ? 'active' : '') + '"></div>'
+  ).join('');
+
+  document.getElementById('reveal-body').innerHTML =
+    '<div class="round-dots">' + dots + '</div>' +
+    '<span class="badge badge-amber" style="margin-bottom:.75rem">Round ' + r.num + ' Results</span>' +
+    '<h1 style="font-family:\'Playfair Display\',serif;font-size:1.45rem;margin-bottom:.2rem;line-height:1.2">' +
+      r.icon + ' ' + r.event + '</h1>' +
+    '<p style="font-size:.82rem;color:var(--muted);margin-bottom:0">Leader: <strong style="color:var(--amber)">' +
+      esc(ranked[0].name) + '</strong> · ' + fmt(ranked[0].portfolio) + '</p>' +
+    '<div class="reveal-bars" id="reveal-bars">' + barCols + '</div>' +
+    '<div class="divider"></div>' +
+    '<div style="font-size:.58rem;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Asset Performance This Round</div>' +
+    '<div class="perf-grid" style="margin-bottom:1.25rem">' + perfRows + '</div>' +
+    '<button class="btn btn-primary" onclick="showExplain()">Why did this happen? →</button>' +
+    '<div style="height:1rem"></div>';
+
+  // Animate bars + confetti + sound
+  setTimeout(() => {
+    ranked.forEach((_, i) => {
+      const bar = document.getElementById('bbar-' + i);
+      if (bar) bar.style.height = bar.dataset.h + 'px';
+    });
+    playReveal();
+    setTimeout(() => {
+      if (typeof confetti === 'function') {
+        confetti({particleCount:80, spread:60, origin:{y:0.4}, colors:['#f59e0b','#3b82f6','#22c55e','#f1f5f9']});
+      }
+    }, 600);
+  }, 120);
+}
+
+// ══════════════════════════════════════════════════════
+// EXPLAIN
+// ══════════════════════════════════════════════════════
+
+function showExplain() {
+  const r = ROUNDS[G.round];
+  const isLast = G.round >= ROUNDS.length - 1;
+
+  const cards = ASSETS.map(a => {
+    const ex = r.explains[a.id];
+    const pos = ex.pct.startsWith('+');
+    return '<div class="explain-card" style="border-left-color:' + a.color + '">' +
+      '<div class="explain-top">' +
+        '<span style="font-size:1.15rem;line-height:1">' + a.icon + '</span>' +
+        '<span class="explain-name">' + a.label + '</span>' +
+        '<span class="explain-pct ' + (pos ? 'pos' : 'neg') + '">' + ex.pct + '</span>' +
+      '</div>' +
+      '<p class="explain-text">' + ex.text + '</p>' +
+    '</div>';
+  }).join('');
+
+  const dots = Array.from({length:6},(_,i)=>
+    '<div class="round-dot ' + (i < G.round ? 'done' : i === G.round ? 'active' : '') + '"></div>'
+  ).join('');
+
+  document.getElementById('explain-body').innerHTML =
+    '<div class="round-dots">' + dots + '</div>' +
+    '<span class="badge badge-blue" style="margin-bottom:.75rem">Why It Happened</span>' +
+    '<h1 style="font-family:\'Playfair Display\',serif;font-size:1.3rem;margin-bottom:1.1rem;line-height:1.25">' +
+      r.icon + ' ' + r.event + '</h1>' +
+    cards +
+    allocHistoryHTML() +
+    '<div style="height:.5rem"></div>' +
+    '<button class="btn ' + (isLast ? 'btn-amber' : 'btn-primary') + '" ' +
+    'onclick="' + (isLast ? 'showFinal()' : 'nextRound()') + '">' +
+      (isLast ? 'See Final Results 🏆' : 'Next Round →') +
+    '</button>' +
+    '<div style="height:1rem"></div>';
+
+  show('explain');
+}
+
+function nextRound() {
+  G.round++;
+  briefRound();
+}
+
+// ══════════════════════════════════════════════════════
+// FINAL
+// ══════════════════════════════════════════════════════
+
+function showFinal() {
+  const ranked = [...G.players].sort((a, b) => b.portfolio - a.portfolio);
+  const medals = ['🥇', '🥈', '🥉'];
+  const divPort = calcDiversified();
+  const divGain = divPort - 1000;
+  const divPct  = ((divGain / 1000) * 100).toFixed(1);
+
+  const rows = ranked.map((p, i) => {
+    const gain    = p.portfolio - 1000;
+    const gainPct = ((gain / 1000) * 100).toFixed(1);
+    const pos     = gain >= 0;
+    return '<div class="final-row ' + (i === 0 ? 'champion' : '') + '">' +
+      '<div class="final-medal">' + (medals[i] || (i + 1)) + '</div>' +
+      '<div>' +
+        '<div class="final-name">' + esc(p.name) + '</div>' +
+        '<div class="final-gain ' + (pos ? 'pos' : 'neg') + '">' +
+          (pos ? '+' : '') + gainPct + '% overall' +
+        '</div>' +
+      '</div>' +
+      '<div class="final-val">' + fmt(p.portfolio) + '</div>' +
+    '</div>';
+  }).join('');
+
+  // Diversified benchmark row
+  const benchRow = '<div class="final-row benchmark">' +
+    '<div class="final-medal" style="font-size:1rem">📊</div>' +
+    '<div>' +
+      '<div class="final-name" style="color:var(--muted)">Even Split (20% each)</div>' +
+      '<div class="final-gain ' + (divGain >= 0 ? 'pos' : 'neg') + '">' +
+        (divGain >= 0 ? '+' : '') + divPct + '% · diversified benchmark' +
+      '</div>' +
+    '</div>' +
+    '<div class="final-val" style="color:var(--muted)">' + fmt(divPort) + '</div>' +
+  '</div>';
+
+  document.getElementById('final-body').innerHTML =
+    '<div style="text-align:center;padding:1.25rem 0 1.5rem;position:relative">' +
+      '<div style="font-size:3.5rem;margin-bottom:.75rem;filter:drop-shadow(0 0 20px #f59e0b60)">🏆</div>' +
+      '<span class="badge badge-amber" style="margin-bottom:.85rem">Final Results · 6 Rounds</span>' +
+      '<h1 style="font-family:\'Playfair Display\',serif;font-size:2.1rem;margin-bottom:.2rem;' +
+      'text-shadow:0 0 30px #f59e0b30">' + esc(ranked[0].name) + '</h1>' +
+      '<p style="color:var(--muted);font-size:.85rem">wins the investment battle</p>' +
+    '</div>' +
+    rows +
+    benchRow +
+    '<div class="divider"></div>' +
+    '<div class="chart-wrap">' +
+      '<div class="chart-lbl">Portfolio Over 6 Rounds</div>' +
+      renderPortfolioChart() +
+    '</div>' +
+    '<div style="background:var(--surface);border:1px solid var(--amber);border-left:3px solid var(--amber);' +
+    'border-radius:var(--radius);padding:1.1rem 1.15rem;margin-bottom:1.25rem">' +
+      '<div style="font-size:.58rem;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;' +
+      'color:var(--amber);margin-bottom:.5rem">The key lesson</div>' +
+      '<p style="font-size:.82rem;color:#94a3b8;line-height:1.72">' +
+        'No single asset wins every round. Inflation rewards gold; crashes reward bonds; bull runs reward stocks. ' +
+        '<strong style="color:var(--text)">Diversification</strong> — spreading across assets — ' +
+        'reduces risk without sacrificing expected return. The best investors don\'t predict markets. They prepare for them.' +
+      '</p>' +
+    '</div>' +
+    '<button class="btn btn-primary" style="margin-bottom:.5rem" onclick="playAgain()">Play Again →</button>' +
+    '<a class="fintro-link" href="https://fintrooo.netlify.app">Learn the theory on Fintro →</a>' +
+    '<div style="height:1rem"></div>';
+
+  playWin();
+  setTimeout(() => {
+    if (typeof confetti === 'function') {
+      confetti({particleCount:120, spread:80, origin:{y:0.3}, colors:['#f59e0b','#fbbf24','#ffffff','#3b82f6']});
+    }
+  }, 300);
+  show('final');
+}
+
+function playAgain() {
+  G = {players:[], round:0, turn:0, allocs:[]};
+  pCounter = 0;
+  goSetup();
+}
+
+// ══════════════════════════════════════════════════════
+// TOOLTIP
+// ══════════════════════════════════════════════════════
+
+function showTip(id) {
+  const a = ASSETS.find(x => x.id === id);
+  document.getElementById('tip-name').textContent = a.icon + '  ' + a.label;
+  document.getElementById('tip-text').textContent = a.tip;
+  document.getElementById('tooltip-overlay').classList.add('show');
+}
+
+function closeTooltip() {
+  document.getElementById('tooltip-overlay').classList.remove('show');
+}
+
+document.getElementById('tooltip-overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeTooltip();
+});
+
+// ══════════════════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════════════════
+
+function fmt(n) {
+  return '$' + Math.round(n).toLocaleString('en-US');
+}
+
+function esc(str) {
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ══════════════════════════════════════════════════════
+// SOUND (Web Audio API)
+// ══════════════════════════════════════════════════════
+
+let audioCtx = null;
+let soundMuted = false;
+
+function initAudio() {
+  if (!audioCtx) {
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
+  }
+}
+
+function playTone(freq, dur, type, vol) {
+  if (soundMuted || !audioCtx) return;
+  try {
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.connect(g); g.connect(audioCtx.destination);
+    o.type = type || 'sine';
+    o.frequency.value = freq;
+    g.gain.setValueAtTime(vol || 0.2, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+    o.start(); o.stop(audioCtx.currentTime + dur);
+  } catch(e) {}
+}
+
+function playClick() {
+  initAudio();
+  playTone(880, 0.07, 'square', 0.08);
+}
+
+function playReveal() {
+  initAudio();
+  [392, 523, 659, 784].forEach((f, i) => setTimeout(() => playTone(f, 0.18, 'sine', 0.15), i * 70));
+}
+
+function playWin() {
+  initAudio();
+  [523, 659, 784, 1047, 1319].forEach((f, i) => setTimeout(() => playTone(f, 0.25, 'sine', 0.18), i * 90));
+}
+
+function toggleMute() {
+  initAudio();
+  soundMuted = !soundMuted;
+  document.getElementById('mute-btn').textContent = soundMuted ? '🔇' : '🔊';
+}
+
+// ══════════════════════════════════════════════════════
+// PORTFOLIO CHART
+// ══════════════════════════════════════════════════════
+
+function renderPortfolioChart() {
+  const colors = ['#f59e0b','#3b82f6','#22c55e','#8b5cf6','#ef4444','#ec4899','#14b8a6','#f97316'];
+  const W = 520, H = 140;
+  const pad = {t:8, r:64, b:22, l:6};
+  const allVals = G.players.flatMap(p => p.history);
+  const minV = Math.min(...allVals) * 0.95;
+  const maxV = Math.max(...allVals) * 1.03;
+  const rounds = G.players[0].history.length - 1;
+
+  const xS = i => pad.l + (i / rounds) * (W - pad.l - pad.r);
+  const yS = v => pad.t + (1 - (v - minV) / (maxV - minV)) * (H - pad.t - pad.b);
+
+  const gridLines = [0.25, 0.5, 0.75, 1].map(f => {
+    const y = pad.t + (1 - f) * (H - pad.t - pad.b);
+    return `<line x1="${pad.l}" y1="${y.toFixed(1)}" x2="${W - pad.r}" y2="${y.toFixed(1)}" stroke="#ffffff07" stroke-width="1"/>`;
+  }).join('');
+
+  const xLabels = Array.from({length: rounds + 1}, (_, i) =>
+    `<text x="${xS(i).toFixed(1)}" y="${H - 2}" font-size="8" fill="#64748b" text-anchor="middle" font-family="Syne,sans-serif">${i === 0 ? 'Start' : 'R' + i}</text>`
+  ).join('');
+
+  const playerLines = G.players.map((p, i) => {
+    const pts = p.history.map((v, r) => `${xS(r).toFixed(1)},${yS(v).toFixed(1)}`).join(' ');
+    const dots = p.history.map((v, r) =>
+      `<circle cx="${xS(r).toFixed(1)}" cy="${yS(v).toFixed(1)}" r="3" fill="${colors[i]}"/>`
+    ).join('');
+    const lastY = Math.max(pad.t + 5, Math.min(H - pad.b - 5, yS(p.history[p.history.length - 1])));
+    const label = `<text x="${(xS(rounds) + 5).toFixed(1)}" y="${(lastY + 3.5).toFixed(1)}" font-size="9" fill="${colors[i]}" font-weight="bold" font-family="Syne,sans-serif">${esc(p.name.slice(0, 8))}</text>`;
+    return `<polyline points="${pts}" fill="none" stroke="${colors[i]}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>${dots}${label}`;
+  }).join('');
+
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block;overflow:visible">${gridLines}${xLabels}${playerLines}</svg>`;
+}
+
+// ══════════════════════════════════════════════════════
+// ALLOCATION HISTORY TABLE
+// ══════════════════════════════════════════════════════
+
+function allocHistoryHTML() {
+  if (!G.allocs[G.round]) return '';
+  const headers = '<th>Player</th>' + ASSETS.map(a => '<th title="' + a.label + '">' + a.icon + '</th>').join('');
+  const rows = G.players.map((p, i) => {
+    const alloc = G.allocs[G.round][i] || {};
+    const cells = ASSETS.map(a => {
+      const pct = alloc[a.id] || 0;
+      const cls = pct >= 40 ? 'ah-hi' : pct === 0 ? 'ah-lo' : '';
+      return `<td class="${cls}">${pct}%</td>`;
+    }).join('');
+    return `<tr><td>${esc(p.name)}</td>${cells}</tr>`;
+  }).join('');
+  return '<div class="alloc-hist"><div class="alloc-hist-lbl">This Round\'s Allocations</div>' +
+    '<table class="ah-table"><thead><tr>' + headers + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+}
+
+// ══════════════════════════════════════════════════════
+// DIVERSIFIED BENCHMARK
+// ══════════════════════════════════════════════════════
+
+function calcDiversified() {
+  let p = 1000;
+  ROUNDS.forEach(r => {
+    let nv = 0;
+    ASSETS.forEach(a => { nv += p * 0.2 * (1 + r.returns[a.id] / 100); });
+    p = Math.round(nv);
+  });
+  return p;
+}
+</script>
+</body>
+</html>
